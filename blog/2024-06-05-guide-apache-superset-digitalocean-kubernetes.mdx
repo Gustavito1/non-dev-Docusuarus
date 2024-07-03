@@ -1,0 +1,199 @@
+---
+slug: guide-apache-superset-digitalocean-kubernetes
+title: Guide Apache Superset DigitalOcean Kubernetes
+authors:
+  name: Gustavo Cubas
+  title: Instituto Apoyo Intern
+  url: https://github.com/Gustavito1
+  image_url: https://avatars.githubusercontent.com/u/117795909?s=400&u=9651625dc3c9820b9df053a6edab731b51b70e67&v=4
+tags: [docusaurus, digital ocean kubernetes, apache superset]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+import Admonition from '@theme/Admonition';
+
+Guia para desplegar [Apache Superset en Kubernetes con Digital Ocean](https://superset.apache.org/docs/installation/kubernetes/).
+
+:::info
+Es necesario tener instalado **NodeJs** y **WSL Ubuntu** para la _Instalacion_ de `Apache Superset`. Revisar [`NodeJs`](https://nodejs.org/en) y [`WSL Ubuntu`](https://learn.microsoft.com/es-es/windows/wsl/install).
+:::
+
+:::note
+En mi caso use el **kubernetes (kubectl)** lo use desde el mismo *docker* pero tambien puedes realizar la _Descarga_ e _Instalacion_ de esta guia de instalacion de [`Kubernetes`](https://kubernetes.io/es/docs/tasks/tools/included/install-kubectl-linux/)
+:::
+
+Ahora Antes de integrar el Apache Superset Primero integramos los pasos para crearse una cuenta en Digital Ocean
+
+## Digital Ocean Kubernetes
+1. Ingresa a su pagina oficial de [`Digital Ocean`](https://try.digitalocean.com/cloud/?utm_campaign=amer_brand_kw_en_cpc&utm_adgroup=digitalocean_exact_exact&_keyword=digital%20ocean&_device=c&_adposition=&utm_content=conversion&utm_medium=cpc&utm_source=google&gad_source=1&gclid=Cj0KCQjwsaqzBhDdARIsAK2gqnfaM1rGe1UPv_JFZ0HovJ4zVnjVRfqUXV2kAtJm8_AEHpvysjFe08kaAtkoEALw_wcB) y te creas una cuenta.
+
+2. Una vez creada una cuenta (te pedira cuenta bancaria en caso crees clusters, sin embargo hay links en donde al registrarte te pueden dar 50$ de regalo para que pruebes las funcionalidades de Digital Ocean) te creas un cluster de Kubernetes.
+
+<img src="/img/digital-ocean.png" alt="Kubernetes logo" style={{ width: '1200px', height: 'auto' }} />
+
+3. Ya que son muchos requerimientos lo explicare uno a uno como crear el cluster:
+ - Si eres de LATAM es recomendable el servidor de **San Franciso** ya que es el mas optimizado.
+ - Sobre la version es mejor usar la mas recomendable ya que generalmente tiene soporte tecnico tanto en su foro como por sus web.
+ - Su tipo de escalado es el por defecto que es el **Fixed size** ya que para el Autoscale es para un sistema mas complejo con varios nodos y en nuestro caso para Apache Superset usare solo 1 nodo. 
+ - El tipo y tamaño del almacenamiento, la Ram y la vCPUs afectan significativamente al precio mensual
+
+::::tip[Ayuda]
+En mi caso use 2vCPUs y 2GB de memoria RAM ya que es el minimo requerimiento para Apache Superset y el almacenamiento use el mínimo por defecto que es 60gb SSD.
+  :::danger[Peligro]
+  En caso de hayas escogido menos requerimientos y ejecutes el comando 'help upgrade' (para instalar el apache superset) mandara error de requerimientos de cpu o ram.
+:::
+::::
+
+ - Ahora para configurar y conectar el cluster en este caso al WSL (windows subsystem Linux) hay dos formas, una usando el comando **doctl** que en la misma pagina de [`Digital Ocean Configurate doctl`](https://docs.digitalocean.com/reference/doctl/how-to/install/) explican la instalacion y luego hacer la conexion.
+
+<Tabs groupId="operating-systems">
+  <TabItem value="auto" label="Automated">
+    <CodeBlock language="bash">
+      doctl kubernetes cluster kubeconfig save &lt;your-id-connection&gt;
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="manual" label="Manual">
+    <CodeBlock language="bash">
+      1. Descargar el 'Cluster Configuration File' y la ruta guardarlo para usarlo en el siguiente comando.
+      2. Usa el comando **kubectl --kubeconfig=/&lt;pathtodirectory&gt;/k8s-1-30-1-do-0-sfo2-1716510397107-kubeconfig.yaml get nodes** para realizar la conexion.
+    </CodeBlock>
+  </TabItem>
+</Tabs>
+
+<Admonition type="warning" icon="⚠️" title="En caso salga un peligro 'permission denied'...">
+  En algunas ocaciones puede ocurrir una advertencia ya que para que **kubectl** logre connectar el cluster correctamente necesita permisos y credenciales y por eso genera esa advertencia que se resuelve con el siguiente comando:
+  **chmod 600 ~/.kube/config**
+</Admonition>
+
+ - Finalmente se al realizar la conexion con el comando **kubectl get nodes -o wide** se deberia poder visualizar el cluster desde el WSL.
+
+<img src="/img/kubectl.png" alt="cluster" style={{ width: '1200px', height: 'auto' }} />
+
+  ### Detalles sobre el Digital Ocean Kubernetes
+  <details>
+    <summary>Expandir</summary>
+    En caso haya algunas dudas te recomiendo mirar este video que lo explica mas teoricamente en el siguiente [link](https://www.youtube.com/watch?v=fhYSKEy0s8w)
+  </details>
+
+## Instalar Apache Superset
+
+En la pagina oficial de Apache Superset hay un Apartado para la [`Instalacion en Kubernetes`](https://superset.apache.org/docs/installation/kubernetes/).
+
+Por siacaso aca pondre los pasos como en el link del repositorio:
+1. Añadir el repositorio heml (Si no tienes instalado helm da click [`aca`](https://helm.sh/docs/intro/install/)) 
+```sh
+    helm repo add superset https://apache.github.io/superset
+    "superset" has been added to your repositories
+    ```
+
+2. Verificar la instalacion del repositorio.
+```sh
+    helm search repo superset
+    NAME                    CHART VERSION   APP VERSION     DESCRIPTION
+    superset/superset       0.1.1           1.0             Apache Superset is a modern, enterprise-ready b...
+    ```
+
+3. Instalar y ejecutar.
+```sh
+    helm upgrade --install --values my-values.yaml superset superset/superset
+    ```
+
+<Admonition type="info" icon="🔥" title="Es recomendable...">
+  Hay algunas guias para las versiones mas recientes, pero como esta adaptado solo para minikube (por ahora solo siguiendo los pasos del link de arriba se puede mediante **localhost**) es necesario hacer algunos cambios para que funcione en nuestro cluster de kubernetes.
+
+</Admonition>
+
+Hay algunas configuraciones adicionales que he agregado pero primero dejare adjuntado la configuracion [`yaml`](https://github.com/Gustavito1/values-apachesuperset/blob/main/values1.yaml).
+
+A continuacion explicare las modificaciones que realize:
+
+### Asignacion de Recursos (Opcional)
+
+Cambie en algunas imagenes del values como el worker o el database la cantidad de recursos del cpu o memoria y esto ayuda en caso de que no tengas recursos suficientes en el kubernetes o ya tengas otro programa instalado:
+
+::::note
+  En cada imagen de cada `pod` se le puede asignar recursos, sin embargo, esto solo se debe aplicar en caso tu cluster tenga pocos recursos o quieras añadir el apache superset al cluster teniendo otro software instalado; el Apache Superset para que funcione correctamente requiere:
+  - 2Gb de Ram
+  - 2vCPUs
+  :::warning
+    En caso de que estes probando en un cluster vacio pero que cumple con los requisitos minimos entonces dejalo como esta esa parte de **resources**. En caso no sepas que recursos asignarle puede pedirle ayuda a [`ChatGPT`](https://openai.com/chatgpt/) para estos casos.
+  :::
+  <img src="/img/resources.png" alt="cluster" style={{ width: '1200px', height: 'auto' }} />
+::::
+
+### Tipo de servicio
+
+Otra configuracion que es importante es el tipo de **servicio** de cada imagen del componente ya sea del websocket como el *servicio* del propio `Superset` en general ya que en la version Oficial esta configurada como **ClusterIP** el cual expone la IP interna de nuestro **Cluster de Kubernetes** (osea localhost).
+
+Para modificar esto es necesario realizar algunos cambios (El cual ya esta en el .yaml):
+
+<Tabs groupId="operating-systems">
+  <TabItem value="g" label="Github">
+    ```yaml
+    service:
+      type: ClusterIP
+      port: 8088
+      annotations: {}
+        # cloud.google.com/load-balancer-type: "Internal"
+      loadBalancerIP: ~
+      nodePort:
+        # -- (int)
+        http: nil
+```
+  </TabItem>
+  <TabItem value="gm" label="Github Modificado">
+      ```yaml
+    service:
+      type: NodePort
+      port: 8088
+      annotations: {}
+        # cloud.google.com/load-balancer-type: "Internal"
+      loadBalancerIP: ~
+      nodePort:
+          # -- (int)
+          http: 31000
+```
+  </TabItem>
+</Tabs>
+
+### Importante a tener en cuenta
+<p style={{ color: 'red', fontWeight: 'bold' }}>
+  EL PUERTO SOLO SE APLICA PARA LA IMAGEN DEL SUPERSET
+</p>
+<img src="/img/nodePort.png" alt="cluster" style={{ width: '600px', height: 'auto' }} />
+
+Hay otros dos `servicios` que son el `supersetCeleryFlower`(basicamente integracion con Celery para trabajos en segundo plano) y `supersetWebsockets` (comunicacion en tiempo real entre el servidor y cliente) no les puse un puerto ya que para estos casos es mejor que se queden en predeterminado mas por seguridad y no exponer un puerto en especifico.
+
+<img src="/img/nodePort1.png" alt="cluster" style={{ width: '600px', height: 'auto' }} />
+
+::::note
+Hay que tener en cuenta algunas cosas
+1. El NodePort lo que hace es `permitir` el tipo de acceso externo a travez de **nodos de cluster**.
+2. El puerto 31000 en si me base de un video, sin embargo el rango de esos puertos son entre 30000 - 32767 que son predeterminados para el acceso externo al servicio a travez de un nodo.
+  :::danger[Nota importante]
+    En esta documentacion con el titulo `Instalar Apache Superset` el link de la documentacion oficial tiene mas imagenes (pods) y es porque la version dev de `Apache superset` actualmente no funciona ya que en el `.yaml` un .sh ya no
+    existe en el repositorio original, asi que use el `no dev` de Apache Superset donde su ruta shell si funciona.
+    ```sh
+    NAMESPACE     NAME                               READY   STATUS      RESTARTS   AGE
+    default       superset-76b99cd84-wpg7c           1/1     Running     0          23d
+    default       superset-init-db-cvg7h             0/1     Completed   0          23d
+    default       superset-postgresql-0              1/1     Running     0          23d
+    default       superset-redis-master-0            1/1     Running     0          23d
+    default       superset-worker-84764bdb9b-4587z   1/1     Running     0          23d
+    ```
+  :::
+::::
+
+### Deploy
+Finalmente siguiendo las recomendaciones demora un poco la ejecucion y es normal ya que se esta usando los requisitos minimos y en un servidor de Digital Ocean,
+ pero al terminar para verificarlo primero se ejecuta el comando:
+```sh
+    kubectl get nodes -o wide
+    ```
+Y deberia salir el estado de nuestro cluster y solo copias el `EXTERNAL-IP`.
+<img src="/img/nodo.png" alt="cluster" style={{ width: '600px', height: 'auto' }} />
+
+Añades el puerto que en mi caso es el `31000` pero es a eleccion del puerto que escogiste. Y finalmente deberias poder ver el acceso a la pagina de `Apache Superset`.
+<img src="/img/apache-superset.png" alt="cluster" style={{ width: '1000px', height: 'auto' }} />

@@ -1,0 +1,74 @@
+---
+tags: [docusaurus, digital ocean kubernetes, apache superset]
+sidebar_position: 1
+---
+
+# Guia para crearse una cuenta y crear un cluster de Kubernetes en Digital Ocean
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+import Admonition from '@theme/Admonition';
+
+Guia para usar e instalar [Digital Ocean Kubernetes](https://superset.apache.org/docs/installation/kubernetes/).
+
+:::info
+Es necesario tener instalado **NodeJs** y **WSL Ubuntu** para la _Instalacion_ de `Apache Superset`. Revisar [`NodeJs`](https://nodejs.org/en) y [`WSL Ubuntu`](https://learn.microsoft.com/es-es/windows/wsl/install).
+:::
+
+:::note
+En mi caso use el **kubernetes (kubectl)** lo use desde el mismo *docker* pero tambien puedes realizar la _Descarga_ e _Instalacion_ de esta guia de instalacion de [`Kubernetes`](https://kubernetes.io/es/docs/tasks/tools/included/install-kubectl-linux/)
+:::
+
+Ahora Antes de integrar el Apache Superset Primero integramos los pasos para crearse una cuenta en Digital Ocean
+
+## Digital Ocean Kubernetes
+1. Ingresa a su pagina oficial de [`Digital Ocean`](https://try.digitalocean.com/cloud/?utm_campaign=amer_brand_kw_en_cpc&utm_adgroup=digitalocean_exact_exact&_keyword=digital%20ocean&_device=c&_adposition=&utm_content=conversion&utm_medium=cpc&utm_source=google&gad_source=1&gclid=Cj0KCQjwsaqzBhDdARIsAK2gqnfaM1rGe1UPv_JFZ0HovJ4zVnjVRfqUXV2kAtJm8_AEHpvysjFe08kaAtkoEALw_wcB) y te creas una cuenta.
+
+2. Una vez creada una cuenta (te pedira cuenta bancaria en caso crees clusters, sin embargo hay links en donde al registrarte te pueden dar 50$ de regalo para que pruebes las funcionalidades de Digital Ocean) te creas un cluster de Kubernetes.
+
+<img src="/img/digital-ocean.png" alt="Kubernetes logo" style={{ width: '1200px', height: 'auto' }} />
+
+3. Ya que son muchos requerimientos lo explicare uno a uno como crear el cluster:
+ - Si eres de LATAM es recomendable el servidor de **San Franciso** ya que es el mas optimizado.
+ - Sobre la version es mejor usar la mas recomendable ya que generalmente tiene soporte tecnico tanto en su foro como por sus web.
+ - Su tipo de escalado es el por defecto que es el **Fixed size** ya que para el Autoscale es para un sistema mas complejo con varios nodos y en nuestro caso para Apache Superset usare solo 1 nodo. 
+ - El tipo y tamaño del almacenamiento, la Ram y la vCPUs afectan significativamente al precio mensual
+
+::::tip[Ayuda]
+En mi caso use 2vCPUs y 2GB de memoria RAM ya que es el minimo requerimiento para Apache Superset y el almacenamiento use el mínimo por defecto que es 60gb SSD.
+  :::danger[Peligro]
+  En caso de hayas escogido menos requerimientos y ejecutes el comando 'help upgrade' (para instalar el apache superset) mandara error de requerimientos de cpu o ram.
+:::
+::::
+
+ - Ahora para configurar y conectar el cluster en este caso al WSL (windows subsystem Linux) hay dos formas, una usando el comando **doctl** que en la misma pagina de [`Digital Ocean Configurate doctl`](https://docs.digitalocean.com/reference/doctl/how-to/install/) explican la instalacion y luego hacer la conexion.
+
+<Tabs groupId="operating-systems">
+  <TabItem value="auto" label="Automated">
+    <CodeBlock language="bash">
+      doctl kubernetes cluster kubeconfig save &lt;your-id-connection&gt;
+    </CodeBlock>
+  </TabItem>
+  <TabItem value="manual" label="Manual">
+    <CodeBlock language="bash">
+      1. Descargar el 'Cluster Configuration File' y la ruta guardarlo para usarlo en el siguiente comando.
+      2. Usa el comando **kubectl --kubeconfig=/&lt;pathtodirectory&gt;/k8s-1-30-1-do-0-sfo2-1716510397107-kubeconfig.yaml get nodes** para realizar la conexion.
+    </CodeBlock>
+  </TabItem>
+</Tabs>
+
+<Admonition type="warning" icon="⚠️" title="En caso salga un peligro 'permission denied'...">
+  En algunas ocaciones puede ocurrir una advertencia ya que para que **kubectl** logre connectar el cluster correctamente necesita permisos y credenciales y por eso genera esa advertencia que se resuelve con el siguiente comando:
+  **chmod 600 ~/.kube/config**
+</Admonition>
+
+ - Finalmente se al realizar la conexion con el comando **kubectl get nodes -o wide** se deberia poder visualizar el cluster desde el WSL.
+
+<img src="/img/kubectl.png" alt="cluster" style={{ width: '1200px', height: 'auto' }} />
+
+  ### Detalles sobre el Digital Ocean Kubernetes
+  <details>
+    <summary>Expandir</summary>
+    En caso haya algunas dudas te recomiendo mirar este video que lo explica mas teoricamente en el siguiente [link](https://www.youtube.com/watch?v=fhYSKEy0s8w)
+  </details>

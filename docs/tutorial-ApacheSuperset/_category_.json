@@ -1,0 +1,8 @@
+{
+  "label": "Tutorial - ApacheSuperset",
+  "position": 1,
+  "link": {
+    "type": "generated-index",
+    "description": "Guia para la Instalacion de Apache Superset con Digital Ocean Kubernetes"
+  }
+}

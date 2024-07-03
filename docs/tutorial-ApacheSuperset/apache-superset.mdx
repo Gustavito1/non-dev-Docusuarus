@@ -1,0 +1,117 @@
+---
+tags: [docusaurus, digital ocean kubernetes, apache superset]
+sidebar_position: 2
+---
+# Guia para instalar Apache Superset en el Cluster de Kubernetes en Digital Ocean
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
+import Admonition from '@theme/Admonition';
+
+En la pagina oficial de Apache Superset hay un Apartado para la [`Instalacion en Kubernetes`](https://superset.apache.org/docs/installation/kubernetes/).
+
+Por siacaso aca pondre los pasos como en el link del repositorio:
+1. Añadir el repositorio heml (Si no tienes instalado helm da click [`aca`](https://helm.sh/docs/intro/install/)) 
+```sh
+    helm repo add superset https://apache.github.io/superset
+    "superset" has been added to your repositories
+    ```
+
+2. Verificar la instalacion del repositorio.
+```sh
+    helm search repo superset
+    NAME                    CHART VERSION   APP VERSION     DESCRIPTION
+    superset/superset       0.1.1           1.0             Apache Superset is a modern, enterprise-ready b...
+    ```
+
+3. Instalar y ejecutar.
+```sh
+    helm upgrade --install --values my-values.yaml superset superset/superset
+    ```
+
+<Admonition type="info" icon="🔥" title="Es recomendable...">
+  Hay algunas guias para las versiones mas recientes, pero como esta adaptado solo para minikube (por ahora solo siguiendo los pasos del link de arriba se puede mediante **localhost**) es necesario hacer algunos cambios para que funcione en nuestro cluster de kubernetes.
+
+</Admonition>
+
+Hay algunas configuraciones adicionales que he agregado pero primero dejare adjuntado la configuracion [`yaml`](https://github.com/Gustavito1/values-apachesuperset/blob/main/values1.yaml).
+
+A continuacion explicare las modificaciones que realize:
+
+### Asignacion de Recursos (Opcional)
+
+Cambie en algunas imagenes del values como el worker o el database la cantidad de recursos del cpu o memoria y esto ayuda en caso de que no tengas recursos suficientes en el kubernetes o ya tengas otro programa instalado:
+
+::::note
+  En cada imagen de cada `pod` se le puede asignar recursos, sin embargo, esto solo se debe aplicar en caso tu cluster tenga pocos recursos o quieras añadir el apache superset al cluster teniendo otro software instalado; el Apache Superset para que funcione correctamente requiere:
+  - 2Gb de Ram
+  - 2vCPUs
+  :::warning
+    En caso de que estes probando en un cluster vacio pero que cumple con los requisitos minimos entonces dejalo como esta esa parte de **resources**. En caso no sepas que recursos asignarle puede pedirle ayuda a [`ChatGPT`](https://openai.com/chatgpt/) para estos casos.
+  :::
+  <img src="/img/resources.png" alt="cluster" style={{ width: '1200px', height: 'auto' }} />
+::::
+
+### Tipo de servicio
+
+Otra configuracion que es importante es el tipo de **servicio** de cada imagen del componente ya sea del websocket como el *servicio* del propio `Superset` en general ya que en la version Oficial esta configurada como **ClusterIP** el cual expone la IP interna de nuestro **Cluster de Kubernetes** (osea localhost).
+
+Para modificar esto es necesario realizar algunos cambios (El cual ya esta en el .yaml):
+
+<Tabs groupId="operating-systems">
+  <TabItem value="g" label="Github">
+    ```yaml
+    service:
+      type: ClusterIP
+      port: 8088
+      annotations: {}
+        # cloud.google.com/load-balancer-type: "Internal"
+      loadBalancerIP: ~
+      nodePort:
+        # -- (int)
+        http: nil
+```
+  </TabItem>
+  <TabItem value="gm" label="Github Modificado">
+      ```yaml
+    service:
+      type: NodePort
+      port: 8088
+      annotations: {}
+        # cloud.google.com/load-balancer-type: "Internal"
+      loadBalancerIP: ~
+      nodePort:
+          # -- (int)
+          http: 31000
+```
+  </TabItem>
+</Tabs>
+
+### Importante a tener en cuenta
+<p style={{ color: 'red', fontWeight: 'bold' }}>
+  EL PUERTO SOLO SE APLICA PARA LA IMAGEN DEL SUPERSET
+</p>
+<img src="/img/nodePort.png" alt="cluster" style={{ width: '600px', height: 'auto' }} />
+
+Hay otros dos `servicios` que son el `supersetCeleryFlower`(basicamente integracion con Celery para trabajos en segundo plano) y `supersetWebsockets` (comunicacion en tiempo real entre el servidor y cliente) no les puse un puerto ya que para estos casos es mejor que se queden en predeterminado mas por seguridad y no exponer un puerto en especifico.
+
+<img src="/img/nodePort1.png" alt="cluster" style={{ width: '600px', height: 'auto' }} />
+
+::::note
+Hay que tener en cuenta algunas cosas
+1. El NodePort lo que hace es `permitir` el tipo de acceso externo a travez de **nodos de cluster**.
+2. El puerto 31000 en si me base de un video, sin embargo el rango de esos puertos son entre 30000 - 32767 que son predeterminados para el acceso externo al servicio a travez de un nodo.
+  :::danger[Nota importante]
+    En esta documentacion con el titulo `Instalar Apache Superset` el link de la documentacion oficial tiene mas imagenes (pods) y es porque la version dev de `Apache superset` actualmente no funciona ya que en el `.yaml` un .sh ya no
+    existe en el repositorio original, asi que use el `no dev` de Apache Superset donde su ruta shell si funciona.
+    ```sh
+    NAMESPACE     NAME                               READY   STATUS      RESTARTS   AGE
+    default       superset-76b99cd84-wpg7c           1/1     Running     0          23d
+    default       superset-init-db-cvg7h             0/1     Completed   0          23d
+    default       superset-postgresql-0              1/1     Running     0          23d
+    default       superset-redis-master-0            1/1     Running     0          23d
+    default       superset-worker-84764bdb9b-4587z   1/1     Running     0          23d
+    ```
+  :::
+::::
